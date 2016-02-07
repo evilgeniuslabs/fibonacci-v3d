@@ -39,6 +39,19 @@ IRrecv irReceiver(IR_RECV_PIN);
 
 CRGB leds[NUM_VIRTUAL_LEDS];
 
+uint8_t order[100] = {
+  99, 97, 98, 96, 92, 95, 91, 93, 89, 84,
+  94, 90, 85, 88, 83, 86, 81, 76, 87, 82,
+  77, 80, 75, 78, 73, 68, 79, 74, 69, 72,
+  67, 70, 65, 60, 71, 66, 61, 64, 59, 62,
+  57, 52, 63, 58, 53, 56, 51, 54, 48, 41,
+  55, 50, 43, 47, 40, 45, 49, 42, 46, 39,
+  44, 36, 28, 33, 38, 30, 35, 27, 32, 37,
+  29, 34, 26, 31, 23, 15, 20, 25, 17, 22,
+  14, 19, 24, 16, 21, 13, 18, 10,  2,  7,
+  12,  4,  9,  1,  6, 11,  3,  8,  0,  5
+};
+
 typedef uint8_t (*SimplePattern)();
 typedef SimplePattern SimplePatternList[];
 
@@ -557,7 +570,7 @@ uint8_t sinelon()
   // a colored dot sweeping back and forth, with fading trails
   fadeToBlackBy( leds, NUM_LEDS, 20);
   int pos = beatsin16(13, 0, NUM_LEDS);
-  leds[pos] += CHSV( gHue, 255, 192);
+  leds[order[pos]] += CHSV( gHue, 255, 192);
   return 8;
 }
 
@@ -567,7 +580,7 @@ uint8_t bpm()
   uint8_t BeatsPerMinute = 62;
   uint8_t beat = beatsin8( BeatsPerMinute, 64, 255);
   for ( int i = 0; i < NUM_LEDS; i++) { //9948
-    leds[i] = ColorFromPalette(currentPalette, gHue + (i * 2), beat - gHue + (i * 10));
+    leds[order[i]] = ColorFromPalette(currentPalette, gHue + (i * 2), beat - gHue + (i * 10));
   }
 
   return 8;
@@ -602,7 +615,7 @@ uint8_t juggle()
   fadeToBlackBy(leds, NUM_LEDS, faderate);
   for ( int i = 0; i < numdots; i++) {
     //beat16 is a FastLED 3.1 function
-    leds[beatsin16(basebeat + i + numdots, 0, NUM_LEDS)] += CHSV(gHue + curhue, thissat, thisbright);
+    leds[order[beatsin16(basebeat + i + numdots, 0, NUM_LEDS)]] += CHSV(gHue + curhue, thissat, thisbright);
     curhue += hueinc;
   }
 
@@ -670,7 +683,7 @@ uint8_t pride()
     uint16_t pixelnumber = i;
     pixelnumber = (NUM_LEDS - 1) - pixelnumber;
 
-    nblend( leds[pixelnumber], newcolor, 64);
+    nblend( leds[order[pixelnumber]], newcolor, 64);
   }
 
   return 15;
@@ -680,7 +693,7 @@ uint8_t radialPaletteShift()
 {
   for (uint8_t i = 0; i < NUM_LEDS; i++) {
     // leds[i] = ColorFromPalette( currentPalette, gHue + sin8(i*16), brightness);
-    leds[i] = ColorFromPalette(currentPalette, i + gHue, 255, LINEARBLEND);
+    leds[order[i]] = ColorFromPalette(currentPalette, i + gHue, 255, LINEARBLEND);
   }
 
   return 8;
@@ -905,30 +918,30 @@ uint8_t verticalPaletteBlend()
 
 const uint8_t coordsX[NUM_LEDS] =
 {
-  135, 180, 236, 255, 253, 210, 143, 98, 37, 7,
-  0, 32, 64, 93, 160, 200, 240, 243, 234, 182,
-  116, 75, 28, 6, 15, 58, 120, 179, 214, 237,
-  226, 210, 155, 95, 59, 27, 14, 36, 85, 142,
-  191, 219, 227, 206, 186, 132, 81, 50, 32, 27,
-  60, 109, 159, 195, 217, 212, 183, 162, 113, 74,
-  50, 46, 46, 83, 128, 169, 191, 207, 193, 141,
-  101, 57, 67, 104, 142, 169, 190, 161, 126, 76,
-  64, 89, 122, 146, 176, 170, 142, 99, 73, 87,
-  112, 155, 165, 119, 90, 100, 130, 137, 142, 116
+   10,   3,  35,  68, 141, 185, 237, 251, 246, 201, 
+  137,  95,  39,  10,  18,  63,  99, 166, 205, 241,
+  239, 228, 176, 115,  76,  31,  19,  41,  89, 126,
+  185, 218, 236, 221, 205, 152,  95,  60,  30,  32,
+   64, 116, 149, 195, 221, 226, 181, 129,  81,  52,
+   38,  49,  88, 164, 218, 202, 158, 112,  52,  50,
+   73, 134, 198, 209, 180, 139,  77,  59,  69, 109,
+  173, 205, 191, 159, 102,  79,  76,  94, 146, 194,
+  189, 168, 125, 101,  94,  93, 126, 172, 178, 166,
+  142, 121, 104, 116, 149, 157, 143, 120, 134, 140
 };
 
 const uint8_t coordsY[NUM_LEDS] =
 {
-  255, 250, 201, 132, 86, 28, 3, 0, 37, 73,
-  146, 209, 242, 246, 242, 229, 174, 106, 64, 21,
-  12, 18, 65, 102, 171, 220, 239, 224, 204, 145,
-  86, 50, 22, 28, 39, 92, 128, 187, 224, 228,
-  202, 179, 122, 72, 43, 30, 47, 63, 115, 151,
-  198, 220, 212, 178, 154, 104, 66, 43, 44, 69,
-  87, 135, 167, 201, 208, 191, 156, 133, 94, 52,
-  62, 109, 175, 195, 191, 169, 120, 70, 68, 91,
-  148, 174, 180, 166, 138, 93, 84, 85, 125, 151,
-  160, 144, 113, 94, 112, 132, 148, 127, 107, 116
+   74, 144, 205, 240, 248, 243, 190, 121,  80,  27,
+    5,   6,  41,  99, 164, 212, 238, 230, 217, 159,
+   95,  58,  19,  11,  18,  62, 124, 179, 213, 228,
+  208, 191, 131,  74,  43,  19,  25,  37,  86, 142,
+  188, 207, 215, 187, 163, 109,  36,  25,  42,  59,
+  108, 157, 187, 198, 139,  61,  37,  37,  78, 125,
+  163, 194, 162,  89,  56,  45,  61,  98, 136, 181,
+  175, 118,  81,  60,  55,  82, 114, 161, 175, 140,
+  104,  80,  59,  76, 101, 138, 165, 153, 122, 100,
+   72,  83, 120, 146, 151, 130,  95, 104, 134, 113
 };
 
 CRGB scrollingHorizontalWashColor( uint8_t x, uint8_t y, unsigned long timeInMillis)
@@ -1410,7 +1423,7 @@ void colorwaves( CRGB* ledarray, uint16_t numleds, CRGBPalette16& palette)
     uint16_t pixelnumber = i;
     pixelnumber = (numleds - 1) - pixelnumber;
 
-    nblend( ledarray[pixelnumber], newcolor, 128);
+    nblend( ledarray[order[pixelnumber]], newcolor, 128);
   }
 }
 
