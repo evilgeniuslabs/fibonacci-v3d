@@ -1,6 +1,6 @@
 /*
    Fibonacci v3D: https://github.com/evilgeniuslabs/fibonacci-v3d
-   Copyright (C) 2015 Jason Coon, Evil Genius Labs
+   Copyright (C) 2014-2016 Jason Coon, Evil Genius Labs
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -34,10 +34,7 @@ IRrecv irReceiver(IR_RECV_PIN);
 #define LED_TYPE    WS2811
 #define NUM_LEDS    100
 
-#define NUM_VIRTUAL_LEDS 101
-#define LAST_VISIBLE_LED 99
-
-CRGB leds[NUM_VIRTUAL_LEDS];
+CRGB leds[NUM_LEDS];
 
 const uint8_t brightnessCount = 5;
 uint8_t brightnessMap[brightnessCount] = { 16, 32, 64, 128, 255 };
@@ -45,16 +42,6 @@ uint8_t brightness = brightnessMap[0];
 
 int patternIndex = 0;
 CRGB solidColor = CRGB::Red;
-
-uint16_t noiseSpeedX = 0; // 1 for a very slow moving effect, or 60 for something that ends up looking like water.
-uint16_t noiseSpeedY = 1;
-uint16_t noiseSpeedZ = 0;
-
-uint16_t noiseScale = 1; // 1 will be so zoomed in, you'll mostly see solid colors.
-
-static uint16_t noiseX;
-static uint16_t noiseY;
-static uint16_t noiseZ;
 
 uint8_t gHue = 0; // rotating "base color" used by many of the patterns
 
@@ -138,6 +125,10 @@ const uint8_t kMatrixHeight = 32;
 const uint8_t maxX = kMatrixWidth - 1;
 const uint8_t maxY = kMatrixHeight - 1;
 
+const uint8_t coordsX10[NUM_LEDS] = { 5, 4, 5, 5, 4, 5, 4, 4, 6, 3, 5, 5, 3, 6, 4, 4, 6, 3, 6, 4, 3, 7, 3, 5, 6, 2, 7, 4, 4, 7, 2, 6, 5, 2, 7, 3, 5, 6, 2, 7, 4, 3, 7, 2, 6, 6, 2, 8, 3, 4, 7, 1, 7, 5, 2, 8, 2, 5, 6, 1, 8, 3, 3, 8, 1, 6, 5, 1, 8, 2, 4, 7, 1, 7, 4, 2, 8, 1, 6, 6, 1, 8, 3, 3, 8, 0, 7, 5, 1, 9, 1, 5, 7, 0, 8, 3, 2, 9, 0, 6 };
+
+const uint8_t coordsY10[NUM_LEDS] = { 5, 4, 5, 4, 5, 5, 3, 6, 4, 4, 6, 3, 5, 5, 3, 6, 3, 4, 6, 2, 6, 4, 3, 7, 3, 5, 5, 2, 7, 3, 4, 7, 2, 6, 5, 3, 7, 2, 5, 6, 2, 7, 4, 3, 7, 2, 6, 5, 2, 8, 3, 4, 7, 1, 7, 4, 2, 8, 2, 5, 6, 1, 8, 3, 3, 8, 1, 7, 5, 2, 8, 2, 5, 7, 1, 8, 4, 2, 8, 1, 6, 6, 1, 8, 2, 4, 8, 0, 7, 5, 1, 9, 1, 5, 7, 0, 8, 3, 3, 9 };
+
 const uint8_t coordsX32[NUM_LEDS] = { 17, 15, 16, 18, 13, 19, 15, 14, 20, 11, 18, 18, 11, 22, 12, 15, 21, 9, 21, 16, 11, 23, 10, 18, 20, 8, 24, 13, 13, 24, 7, 21, 18, 9, 25, 9, 16, 23, 6, 24, 14, 10, 26, 6, 20, 20, 6, 27, 10, 14, 25, 4, 24, 16, 8, 28, 7, 18, 23, 4, 27, 12, 11, 28, 4, 22, 19, 5, 29, 8, 15, 26, 2, 26, 15, 8, 30, 4, 20, 23, 2, 30, 10, 12, 29, 1, 25, 18, 4, 31, 5, 17, 26, 0, 29, 12, 8, 31, 1, 22 };
 
 const uint8_t coordsY32[NUM_LEDS] = { 16, 15, 19, 14, 17, 18, 12, 20, 14, 14, 21, 11, 19, 17, 11, 22, 12, 16, 21, 9, 22, 15, 12, 24, 9, 18, 20, 8, 24, 12, 14, 24, 7, 22, 17, 9, 26, 9, 17, 22, 6, 25, 13, 11, 26, 6, 21, 19, 6, 27, 9, 15, 25, 4, 25, 15, 8, 28, 6, 19, 22, 4, 28, 11, 12, 28, 3, 23, 18, 5, 30, 7, 16, 25, 2, 27, 13, 8, 30, 3, 21, 21, 3, 30, 8, 13, 28, 1, 26, 16, 5, 31, 4, 18, 25, 1, 30, 11, 9, 31 };
@@ -176,6 +167,21 @@ void setPixelAR(uint8_t angle, uint8_t radius, uint8_t dAngle, uint8_t dRadius, 
       if (ro <= qadd8(radius, dRadius) && ro >= qsub8(radius, dRadius)) {
         leds[i] = color;
       }
+    }
+  }
+}
+
+void setPixelXY10(uint8_t x, uint8_t y, CRGB color)
+{
+  if ((x >= 10) || (y >= 10)) {
+    return;
+  }
+
+  for (uint8_t i = 0; i < NUM_LEDS; i++) {
+    uint8_t o = physicalToFibonacciOrder[i];
+    
+    if (coordsX10[o] == x && coordsY10[o] == y) {
+      leds[i] = color;
     }
   }
 }
@@ -436,20 +442,20 @@ void heatMap(CRGBPalette16 palette, bool up)
   // COOLING: How much does the air cool as it rises?
   // Less cooling = taller flames.  More cooling = shorter flames.
   // Default 55, suggested range 20-100
-  uint8_t cooling = 20;
+  uint8_t cooling = 55;
 
   // SPARKING: What chance (out of 255) is there that a new spark will be lit?
   // Higher chance = more roaring fire.  Lower chance = more flickery fire.
   // Default 120, suggested range 50-200.
-  uint8_t sparking = 200;
+  uint8_t sparking = 120;
 
   // Array of temperature readings at each simulation cell
   static byte heat[kMatrixWidth + 3][kMatrixHeight + 3];
 
-  for (int x = 0; x < kMatrixWidth; x++)
+  for (int x = 0; x < 10; x++)
   {
     // Step 1.  Cool down every cell a little
-    for (int y = 0; y < kMatrixHeight; y++)
+    for (int y = 0; y < 10; y++)
     {
       heat[x][y] = qsub8(heat[x][y], random8(0, ((cooling * 10) / kMatrixHeight) + 2));
     }
@@ -485,7 +491,7 @@ void heatMap(CRGBPalette16 palette, bool up)
       // override color 0 to ensure a black background
       if (colorIndex != 0)
       {
-        setPixelXY(x, y, ColorFromPalette(palette, colorIndex, 255, LINEARBLEND));
+        setPixelXY10(x, y, ColorFromPalette(palette, colorIndex, 255, LINEARBLEND));
       }
     }
   }
@@ -495,14 +501,14 @@ uint8_t fire()
 {
   heatMap(HeatColors_p, true);
 
-  return 8;
+  return 30;
 }
 
 uint8_t water()
 {
   heatMap(IceColors_p, false);
 
-  return 8;
+  return 30;
 }
 
 uint8_t showSolidColor()
@@ -864,35 +870,6 @@ uint8_t diagonalRainbow()
   return 8;
 }
 
-uint8_t noise()
-{
-  for (uint8_t i = 0; i < NUM_LEDS; i++) {
-    uint8_t j = physicalToFibonacciOrder[i];
-    
-    uint8_t x = coordsX[j];
-    uint8_t y = coordsY[j];
-
-    int xoffset = noiseScale * x;
-    int yoffset = noiseScale * y;
-
-    uint8_t data = inoise8(x + xoffset + noiseX, y + yoffset + noiseY, noiseZ);
-
-    // The range of the inoise8 function is roughly 16-238.
-    // These two operations expand those values out to roughly 0..255
-    // You can comment them out if you want the raw noise data.
-    data = qsub8(data, 16);
-    data = qadd8(data, scale8(data, 39));
-
-    leds[i] = ColorFromPalette(currentPalette, data, 255, LINEARBLEND);
-  }
-
-  noiseX += noiseSpeedX;
-  noiseY += noiseSpeedY;
-  noiseZ += noiseSpeedZ;
-
-  return 8;
-}
-
 uint8_t wave()
 {
   const uint8_t scale = 256 / kMatrixWidth;
@@ -1086,8 +1063,38 @@ typedef SimplePattern SimplePatternList[];
 
 #include "Life.h"
 #include "Twinkles.h"
+#include "Noise.h"
 
 const SimplePatternList patterns = {
+  // Fibonacci patterns
+  pride1,
+  pride2,
+  colorWaves1,
+  colorWaves2,
+  incrementalDrift,
+
+  // palette shifting/blending patterns
+  radialPaletteShift,
+  verticalPaletteBlend,
+  horizontalPaletteBlend,
+  horizontalRainbow,
+  verticalRainbow,
+  diagonalRainbow,
+
+  // noise patterns
+  fireNoise,
+  fireNoise2,
+  lavaNoise,
+  rainbowNoise,
+  rainbowStripeNoise,
+  partyNoise,
+  forestNoise,
+  cloudNoise,
+  oceanNoise,
+  blackAndWhiteNoise,
+  blackAndBlueNoise,
+
+  // radial patterns
   radialWavesWithCircular,
   radialWaves,
   radial,
@@ -1097,37 +1104,30 @@ const SimplePatternList patterns = {
   circular,
   angular,
   angular2,
-  incrementalDrift,
-  pride1,
-  pride2,
-  colorWaves1,
-  colorWaves2,
-  radialPaletteShift,
-  horizontalRainbow,
-  verticalRainbow,
-  diagonalRainbow,
-  noise,
-  verticalPaletteBlend,
-  horizontalPaletteBlend,
+
+  // 2D XY patterns
   wave,
   life,
   pulse,
+  fire,
+  water,
+
+  // 1D patterns
   rainbow,
   rainbowWithGlitter,
   rainbowSolid,
-  confetti,
   sinelon1,
   sinelon2,
   bpm1,
   bpm2,
   juggle,
   juggle2,
-  fire,
-  water,
+  confetti,
   rainbowTwinkles,
   snowTwinkles,
   cloudTwinkles,
   incandescentTwinkles,
+  
   showSolidColor,
 };
 
@@ -1425,9 +1425,9 @@ void setup()
   FastLED.setBrightness(brightness);
   FastLED.setDither(brightness < 255);
 
-  noiseX = random16();
-  noiseY = random16();
-  noiseZ = random16();
+  noisex = random16();
+  noisey = random16();
+  noisez = random16();
 }
 
 void loop()
